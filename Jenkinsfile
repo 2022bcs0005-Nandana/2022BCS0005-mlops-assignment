@@ -1,22 +1,26 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.10'
-        }
+    agent any
+
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out code...'
                 checkout scm
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Install Python & Dependencies') {
             steps {
-                sh 'pip install --upgrade pip'
-                sh 'pip install fastapi uvicorn scikit-learn mlflow "dvc[s3]" pandas numpy joblib boto3'
+                sh '''
+                apt update
+                apt install -y python3 python3-pip
+                pip3 install --upgrade pip
+                pip3 install fastapi uvicorn scikit-learn mlflow "dvc[s3]" pandas numpy joblib boto3
+                '''
             }
         }
 
@@ -28,7 +32,7 @@ pipeline {
 
         stage('Train Model') {
             steps {
-                sh 'python src/train.py --run_name "jenkins_run" --dataset_version "v2" --model_type "random_forest" --n_estimators 100 --feature_set "all"'
+                sh 'python3 src/train.py --run_name "jenkins_run" --dataset_version "v2" --model_type "random_forest" --n_estimators 100 --feature_set "all"'
             }
         }
 
@@ -36,6 +40,15 @@ pipeline {
             steps {
                 sh 'cat models/metrics.json'
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
