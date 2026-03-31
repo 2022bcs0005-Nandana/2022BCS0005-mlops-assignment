@@ -13,20 +13,23 @@ pipeline {
             }
         }
 
-        stage('Install Python & Dependencies') {
+        stage('Install Dependencies') {
             steps {
                 sh '''
-                apt update
-                apt install -y python3 python3-pip
-                pip3 install --upgrade pip
-                pip3 install fastapi uvicorn scikit-learn mlflow "dvc[s3]" pandas numpy joblib boto3
+                apt-get update -y || true
+                apt-get install -y python3 python3-pip || true
+                pip3 install fastapi uvicorn scikit-learn mlflow "dvc[s3]" pandas numpy joblib boto3 --break-system-packages || pip3 install fastapi uvicorn scikit-learn mlflow "dvc[s3]" pandas numpy joblib boto3
                 '''
             }
         }
 
         stage('DVC Pull') {
             steps {
-                sh 'dvc pull'
+                sh '''
+                dvc remote modify myremote access_key_id $AWS_ACCESS_KEY_ID
+                dvc remote modify myremote secret_access_key $AWS_SECRET_ACCESS_KEY
+                dvc pull
+                '''
             }
         }
 
